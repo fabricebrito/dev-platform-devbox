@@ -1,0 +1,195 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-server-deployment
+  labels:
+    app: code-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: code-server
+  template:
+    metadata:
+      labels:
+        app: code-server
+    spec:
+      {{ if .Values.calrissian.enabled }}
+      serviceAccountName: calrissian-sa
+      {{ end }}
+      initContainers:
+      - name: init-file-on-volume
+        securityContext:
+        #   fsGroup: 100
+        #   uid: 1001
+          runAsUser: 0
+        image: {{ .Values.coder.coderImage }}
+        command:
+          - /bin/bash
+          - '-c'
+          - sh /opt/init/.init.sh
+        volumeMounts:
+          - name: nix
+            mountPath: /nix
+          - name: workspace-volume
+            mountPath: /workspace
+          - name: init
+            mountPath: /opt/init/.init.sh
+            subPath: init
+        resources:
+          limits:
+            cpu: '1'
+            memory: '1Gi'
+          requests:
+            cpu: '1'
+            memory: '1Gi'
+        imagePullPolicy: IfNotPresent
+      securityContext:
+        fsGroup: 100
+        uid: 1001
+        runAsUser: 1001
+      containers:
+        - name: code-server
+          image: {{ .Values.coder.coderImage }}
+          securityContext:
+            privileged: true
+          command: ["/bin/bash", "-c"]
+          args:
+            - >
+              code-server --auth none --bind-addr 0.0.0.0:8080 --user-data-dir /workspace /workspace/{{ .Values.coder.workspace }}
+          ports:
+            - containerPort: 8080
+              name: web
+          volumeMounts:
+            - name: nix
+              mountPath: /nix
+            - name: workspace-volume
+              mountPath: /workspace
+            - name: bash-login
+              mountPath: /workspace/.bash_login
+              subPath: bash-login
+            - name: bash-rc
+              mountPath: /workspace/.bashrc
+              subPath: bash-rc
+            {{ if .Values.calrissian.enabled }}
+            - mountPath: /calrissian
+              name: calrissian-volume
+            - name: node-selectors
+              mountPath: /etc/calrissian/pod-node-selector.yaml 
+              subPath: pod-node-selector.yaml 
+            {{ end }}
+          env:
+          - name: XDG_CONFIG_HOME
+            value: /workspace/.local
+          - name: XDG_DATA_HOME
+            value: /workspace/.local/share/
+          - name: XDG_RUNTIME_DIR
+            value: /workspace/.local
+          - name: CWLTOOL_OPTIONS
+            value: "--podman"
+          - name: AWS_DEFAULT_REGION
+            value: "us-east-1"
+          - name: AWS_ACCESS_KEY_ID
+            value: "test"
+          - name: AWS_SECRET_ACCESS_KEY
+            value: "test"
+          {{ if .Values.calrissian.enabled }}
+          - name: CALRISSIAN_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          {{ end }}
+          resources:
+            limits:
+              cpu: {{ .Values.coderResources.limits.cpu }}
+              memory: {{ .Values.coderResources.limits.memory }}
+            requests:
+              cpu: {{ .Values.coderResources.requests.cpu }}
+              memory: {{ .Values.coderResources.requests.memory }}
+      volumes:
+        - name: nix
+          persistentVolumeClaim:
+            claimName: nix-claim
+        - name: workspace-volume
+          persistentVolumeClaim:
+            claimName: code-server-pvc
+        - name: init
+          configMap:
+            name: init
+            defaultMode: 420
+        - name: bash-login
+          configMap:
+            name: bash-login
+            defaultMode: 420
+        - name: bash-rc
+          configMap:
+            name: bash-rc
+            defaultMode: 420
+        {{ if .Values.calrissian.enabled }}
+        - name: calrissian-volume
+          persistentVolumeClaim:
+            claimName: calrissian-claim
+        - name: node-selectors
+          configMap:
+            name: node-selectors
+            defaultMode: 420
+        {{ end }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: code-server-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.coder.workspaceStorage }}
+  storageClassName: {{ .Values.coder.storageClassName}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-server-service
+spec:
+  selector:
+    app: code-server
+  ports:
+  - name: web
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init
+data:
+  init: |
+    {{ required "A valid .Values.initScript entry required!" ( tpl ( .Values.initScript | default ( .Files.Get "files/init.sh")) . | nindent 10 ) }} 
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bash-rc
+data:
+  bash-rc: |
+    {{ required "A valid .Values.bashrcScript entry required!" ( tpl ( .Values.bashrcScript | default ( .Files.Get "files/bash-rc")) . | nindent 10 ) }}  
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bash-login
+data:
+  bash-login: |
+    {{ required "A valid .Values.bashloginScript entry required!" ( tpl ( .Values.bashloginScript | default ( .Files.Get "files/bash-login")) . | nindent 10 ) }} 
+---
+{{ if .Values.calrissian.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-selectors
+data:
+  pod-node-selector.yaml: |
+    {}
+{{ end }}

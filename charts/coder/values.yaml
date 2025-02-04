@@ -1,0 +1,19 @@
+
+coder:
+  coderImage: eoepca/pde-code-server:1.0.0
+  workspace: ""
+  storageClassName: standard
+  workspaceStorage: 20Gi
+
+calrissian:
+  enabled: False
+  storage: 10Gi
+  storageClassName: standard
+
+coderResources:
+  limits:
+    cpu: '2'
+    memory: '6442450944'
+  requests:
+    cpu: '1'
+    memory: '4294967296'

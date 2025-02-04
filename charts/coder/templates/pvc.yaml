@@ -1,0 +1,25 @@
+{{ if .Values.calrissian.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: calrissian-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: {{ .Values.calrissian.storage}}
+  storageClassName: {{ .Values.calrissian.storageClassName}}
+---
+{{ end }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nix-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.calrissian.storage}}
+  storageClassName: {{ .Values.calrissian.storageClassName}}
