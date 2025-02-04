@@ -1,5 +1,5 @@
 alias ll="ls -l"
 
-alias aws="aws --endpoint-url=http://eoap-quickwin-localstack:4566"
+alias aws="aws --endpoint-url=http://dev-platform-devbox-localstack:4566"
 
 export PATH="/workspace/.nix-profile/bin:/workspace/.local/bin:$PATH"

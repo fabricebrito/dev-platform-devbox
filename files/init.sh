@@ -12,7 +12,8 @@ echo "wget -O /workspace/install.sh  https://nixos.org/nix/install" >> /workspac
 echo "sh /workspace/install.sh --no-daemon" >> /workspace/install-nix.sh
 echo ". ~/.nix-profile/etc/profile.d/nix.sh" >> /workspace/install-nix.sh
 
-echo 'export PATH="/workspace/.nix-profile/bin:$PATH"' >> /workspace/install-nix.sh
+echo 'pip3 install awscli' >> /workspace/install-nix.sh
+echo 'pip3 install awscli-plugin-endpoint' >> /workspace/install-nix.sh
 
 
 sudo -u jovyan sh /workspace/install-nix.sh
@@ -23,7 +24,7 @@ wget --quiet --output-document=/dev/stdout https://get.jetify.com/devbox   | bas
 chown -R 1001:100 /usr/local/bin/devbox
 mkdir -p /workspace/.local/bin
 cp /usr/local/bin/devbox /workspace/.local/bin/devbox
-chown -R 1001:100 /workspace/.local/bin/devbox
+chown -R 1001:100 /workspace/.local
 chmod +x /workspace/.local/bin/devbox
 
 mkdir -p /workspace/User/
